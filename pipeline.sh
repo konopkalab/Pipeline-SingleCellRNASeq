@@ -86,3 +86,6 @@ umi_tools count --per-gene --gene-tag=XT --per-cell --stdin=<aligned-assigned-so
 #8.	Dobin, A., et al., STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 2013. 29(1): p. 15-21.
 #9.	Liao, Y., G.K. Smyth, and W. Shi, featureCounts: an efficient general purpose program for assigning sequence reads to genomic features. Bioinformatics, 2014. 30(7): p. 923-30.
 #10.	Li, H., et al., The Sequence Alignment/Map format and SAMtools. Bioinformatics, 2009. 25(16): p. 2078-9.
+
+
+
