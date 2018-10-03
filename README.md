@@ -1,5 +1,6 @@
 # Custom pipeline to preprocess the raw sequencing data for a single cell/nuclei transcriptomic profiling.
 
+## Generate fastq files
 Raw sequencing data is acquired from the sequencing core facility in the form of binary base call (BCL) files. BCL files are then de-multiplexed with the 10X Genomics i7 index (used during library preparation) using Illumina’s bcl2fastq v2.17.1.14 [1] and mkfastq command from 10X Genomics CellRanger v2.1.1 [2] tools.
 ```shell
 cellranger mkfastq --run=<path-to-bcl-files> --csv=<samplesheet.csv> --use-bases-mask Y26n,I8n,Y124n
@@ -21,27 +22,27 @@ Lane,Sample,Index
 4,SAMPLE2,SI-GA-G2
 4,SAMPLE3,SI-GA-G3
 ```
-------
 
+## Quality check
 Extracted paired-end fastq files (26 bp long R1 - cell barcode and UMI sequence information, 124 bp long R2 - transcript sequence information) are checked for read quality using FASTQC v0.11.5 [3].
 ```shell
 fastqc <input-R1.fastq.gz>
 fastqc <input-R2.fastq.gz>
 ```
-------
 
+## Estimate real cells
 R1 reads are then used to estimate and identify real cells using whitelist command from UMI-tools v0.5.4 [4] program. 
 ```shell
 umi_tools whitelist --stdin=<input-R1.fastq.gz> --bc-pattern=CCCCCCCCCCCCCCCCNNNNNNNNNN --expect-cells=<number-of-expected-cells> --plot-prefix=<prefix> --log=<prefix-whitelist.out> --error=<prefix-whitelist.err> --stdout=<prefix-whitelist.txt>
 ```
-------
 
+## Filter reads
 A whitelist of cell-barcodes (putative real cells) and R2 fastq files are later used to extract reads corresponding to real cells only (excluding sequence information representing empty beads, doublets, low quality/degrading cells, etc.) using extract command from UMI-tools v0.5.4 [4]. This step also appends the cell-barcode and UMI sequence information from R1 to read names in R2 fastq file. 
 ```
 umi_tools extract --bc-pattern=CCCCCCCCCCCCCCCCNNNNNNNNNN --stdin=<input-R1.fastq.gz> --stdout=<extracted-R1.fastq.gz> --read2-in=<input-R2.fastq.gz> --read2-out=<extracted-R2.fastq.gz> --filter-cell-barcode --whitelist=<prefix-whitelist.txt> --log=<prefix-extract.out> --error=<prefix-extract.err>
 ```
-------
 
+## Reads alignment
 Extracted R2 reads are then aligned to reference genome (HG38/GRCh38p12 for Human, MM10/GRCm38p6 for Mouse) from UCSC genome browser [5] and reference annotation (Gencode v28 for human [6], Gencode vM17 for mouse [7]) using STAR aligner v2.5.2b [8] allowing upto 5 mismatches. 
 ```
 STAR --runThreadN 48 \
@@ -59,8 +60,8 @@ STAR --runThreadN 48 \
      --twopassMode Basic \
      --outFileNamePrefix <output-prefix>
 ```
-------
 
+## Annotate reads
 Uniquely mapped reads are then assigned to exons (for single cell datasets) or genes (for single nuclei datasets) using featureCounts program from Subread package (v1.6.2) [9]. 
 ```
 featureCounts \
@@ -74,24 +75,23 @@ featureCounts \
 	-o <prefix-primary-assigned> \
 	<star-out-bam>
 ```
-------
 
+## Sort and index bam
 Assigned reads are sorted and indexed using Samtools v1.6 [10] 
 ```
 samtools sort <feature-counts-out-bam> -o <aligned-assigned-sorted>
 samtools index <aligned-assigned-sorted>
 ```
-------
 
+## Generate count table
 Assigned, sorted and indexed reads are then used to generate raw expression UMI count tables using count command from UMI-tools v0.5.4 [4] program. 
 ```
 umi_tools count --per-gene --gene-tag=XT --per-cell --stdin=<aligned-assigned-sorted.bam> --stdout=<prefix-counts.tsv.gz> --log=<prefix-counts.log> --error=<prefix-counts.err> --wide-format-cell-counts
 ```
-------
 
+## Downstream processing
 This raw expression matrix contains cells as rows and genes as columns and can be further used for downstream analysis such as normalization, clustering, differentially expressed genes, etc.
 
-------
 
 ## References
 1.	bcl2fastq. Illumina Inc.
